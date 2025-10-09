@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Isilah Teks Rompang - Perkenalan</title>
+  <style>
+    :root{
+      --light-blue: #d7f0ff; /* skin soal */
+      --dark-blue: #0b4e8a;  /* layer laptop */
+      --btn-blue: #1e90ff;
+      --white: #ffffff;
+      --text-color: #03223c;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    body{
+      margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg,var(--dark-blue) 0%, #133e6b 60%); color:var(--text-color);
+    }
+
+    /* Laptop frame */
+    .laptop {
+      width:920px; max-width:95%; border-radius:18px; background:var(--dark-blue); padding:22px; box-shadow:0 10px 30px rgba(2,6,23,0.5);
+    }
+
+    .screen {
+      background:var(--light-blue); border-radius:12px; padding:26px; box-shadow:inset 0 1px 0 rgba(255,255,255,0.6);
+    }
+
+    h1{font-size:20px; margin:0 0 12px}
+    p.lead{margin:6px 0 18px}
+
+    .audio-row{display:flex; gap:12px; align-items:center; margin-bottom:14px}
+    .audio-row button{padding:8px 12px; border-radius:8px; border:none; cursor:pointer; background:var(--btn-blue); color:#fff}
+
+    .soal{background:var(--light-blue); padding:14px; border-radius:10px; border:1px solid rgba(0,0,0,0.05)}
+
+    .passage{background:#ffffff; padding:18px; border-radius:8px; min-height:120px}
+    .passage textarea{
+      background:var(--white); border:1px solid #cfdce6; padding:6px 8px; border-radius:6px; min-width:90px; min-height:34px; resize:none; font-size:14px; font-family:inherit; vertical-align:middle;
+      outline:none
+    }
+    .passage textarea:focus{box-shadow:0 0 0 3px rgba(30,144,255,0.12); border-color:var(--btn-blue)}
+
+    .controls{display:flex; gap:12px; margin-top:16px}
+    .controls button{padding:10px 14px; border-radius:8px; border:none; cursor:pointer; font-weight:600}
+    .btn-result{background:#0077cc; color:#fff}
+    .btn-reset{background:#e6eef9; color:var(--dark-blue); border:1px solid rgba(2,35,86,0.08)}
+
+    .feedback{margin-top:12px; font-weight:700}
+    .feedback.ok{color: #026938}
+    .feedback.wrong{color: #a61919}
+
+    /* small screen adjustments */
+    @media (max-width:520px){
+      .passage{font-size:14px}
+      .audio-row{flex-direction:column; align-items:flex-start}
+    }
+  </style>
+</head>
+<body>
+  <div class="laptop" role="main">
+    <div class="screen">
+      <h1>Isi Teks Rompang — Perkenalan</h1>
+      <p class="lead">Sebelum mengisi, mohon putar rekaman berikut dan dengarkan dengan seksama.</p>
+
+      <div class="audio-row">
+        <audio id="audio" src="https://juna-arjuna.github.io/Media-Pembelajaran/perkenalan.mp3"></audio>
+        <button id="playBtn" type="button" aria-label="Putar rekaman">▶ Putar Rekaman</button>
+        <button id="pauseBtn" type="button" aria-label="Jeda rekaman">▮▮ Jeda</button>
+        <div style="margin-left:auto; font-size:13px; opacity:0.9">Petunjuk: dengarkan lalu isilah teks di bawah.</div>
+      </div>
+
+      <div class="soal" aria-label="Soal teks rompang">
+        <div class="passage" id="passage">
+          My name is Junaidi, and I was <textarea id="b1" aria-label="Kata nomor 1" rows="1"></textarea> in Kudus in <textarea id="b2" aria-label="Kata nomor 2" rows="1"></textarea>. I live in a small <textarea id="b3" aria-label="Kata nomor 3" rows="1"></textarea> called Kaliwungu, Kudus Regency. I'm <textarea id="b4" aria-label="Kata nomor 4" rows="1"></textarea> and have <textarea id="b5" aria-label="Kata nomor 5" rows="1"></textarea> children. I work as a <textarea id="b6" aria-label="Kata nomor 6" rows="1"></textarea> at MTs NU Nurul Huda. My <textarea id="b7" aria-label="Kata nomor 7" rows="1"></textarea> is website development.
+        </div>
+
+        <div class="controls">
+          <button class="btn-result" id="checkBtn" type="button">Hasil</button>
+          <button class="btn-reset" id="resetBtn" type="button">Reset</button>
+        </div>
+
+        <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+      </div>
+
+      <p style="margin-top:12px; font-size:13px; opacity:0.95">Catatan: Teks area berwarna putih dan bersih dari tulisan awal. Gunakan huruf kecil seperti pada rekaman. Sistem akan memeriksa jawaban persis: <em>born</em>, <em>1984</em>, <em>village</em>, <em>married</em>, <em>three</em>, <em>teacher</em>, <em>passion</em>.</p>
+    </div>
+  </div>
+
+  <script>
+    const audio = document.getElementById('audio');
+    const playBtn = document.getElementById('playBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const checkBtn = document.getElementById('checkBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const feedbackEl = document.getElementById('feedback');
+
+    playBtn.addEventListener('click', ()=>{
+      audio.play();
+      playBtn.textContent = '▶ Memutar...';
+    });
+    pauseBtn.addEventListener('click', ()=>{
+      audio.pause();
+      playBtn.textContent = '▶ Putar Rekaman';
+    });
+
+    // expected answers (lowercase, trimmed)
+    const expected = ['born','1984','village','married','three','teacher','passion'];
+    const ids = ['b1','b2','b3','b4','b5','b6','b7'];
+
+    function getAnswers(){
+      return ids.map(id => document.getElementById(id).value.trim().toLowerCase());
+    }
+
+    checkBtn.addEventListener('click', ()=>{
+      const answers = getAnswers();
+      const allCorrect = answers.every((a,i)=> a === expected[i]);
+      if(allCorrect){
+        feedbackEl.textContent = 'Hebat. Jawaban anda benar';
+        feedbackEl.classList.remove('wrong');
+        feedbackEl.classList.add('ok');
+      } else {
+        feedbackEl.textContent = 'Maaf. Jawaban anda salah, ulangi lagi';
+        feedbackEl.classList.remove('ok');
+        feedbackEl.classList.add('wrong');
+      }
+    });
+
+    resetBtn.addEventListener('click', ()=>{
+      ids.forEach(id=>{ document.getElementById(id).value = ''; });
+      feedbackEl.textContent = '';
+      playBtn.textContent = '▶ Putar Rekaman';
+      audio.pause();
+      audio.currentTime = 0;
+    });
+
+    // Ensure textareas start empty and white
+    window.addEventListener('load', ()=>{
+      ids.forEach(id=>{ const ta = document.getElementById(id); ta.value = ''; ta.style.background = 'var(--white)'; });
+    });
+  </script>
+</body>
+</html>
