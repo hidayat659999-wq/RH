@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Jodohkan Gambar dan Teks</title>
+  <style>
+    :root{
+      --laptop-bg: #dff7e6; /* hijau muda */
+      --white: #ffffff;
+      --card: #f8fff8;
+      --btn: #2f8f4a;
+      --muted: #234f2e;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+    }
+    body{margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(180deg,var(--laptop-bg), #c9efd0);}
+    .laptop{width:980px; max-width:95%; background:var(--laptop-bg); border-radius:14px; padding:20px; box-shadow:0 12px 30px rgba(0,0,0,0.12)}
+    h1{margin:0 0 8px; color:var(--muted)}
+    p.lead{margin:0 0 16px; color:rgba(0,0,0,0.6)}
+
+    .content{display:grid; grid-template-columns: 1fr 320px; gap:18px}
+
+    /* gambar area */
+    .gallery{display:grid; grid-template-columns:repeat(2,1fr); gap:12px}
+    .card{background:var(--card); border-radius:10px; padding:10px; display:flex; flex-direction:column; align-items:center; gap:8px; border:1px solid rgba(0,0,0,0.05)}
+    .card img{width:100%; height:170px; object-fit:cover; border-radius:8px}
+    .dropbox{width:100%; min-height:40px; border:2px dashed rgba(0,0,0,0.08); border-radius:8px; display:flex; align-items:center; justify-content:center; background:var(--white)}
+    .dropbox.dragover{border-color:rgba(47,143,74,0.8); box-shadow:0 4px 12px rgba(47,143,74,0.06)}
+    .dropbox textarea{width:100%; height:36px; border:none; background:transparent; resize:none; padding:6px 8px; font-size:15px; outline:none; text-align:center}
+
+    /* pool teks */
+    .pool{background:rgba(255,255,255,0.9); padding:12px; border-radius:10px; border:1px solid rgba(0,0,0,0.04)}
+    .pool h3{margin:0 0 8px}
+    .words{display:flex; flex-direction:column; gap:8px}
+    .word{padding:8px 10px; border-radius:8px; background:var(--white); border:1px solid rgba(0,0,0,0.06); cursor:grab; user-select:none}
+    .word[draggable="true"]:active{cursor:grabbing}
+
+    .controls{display:flex; gap:10px; margin-top:12px}
+    .btn{padding:10px 14px; border-radius:8px; border:none; cursor:pointer; font-weight:600}
+    .btn-check{background:var(--btn); color:#fff}
+    .btn-reset{background:#fff; color:var(--btn); border:1px solid rgba(0,0,0,0.06)}
+
+    .feedback{margin-top:12px; font-weight:700}
+    .feedback.ok{color:#0b7d39}
+    .feedback.wrong{color:#ad1b2d}
+
+    @media (max-width:900px){
+      .content{grid-template-columns:1fr;}
+      .gallery{grid-template-columns:repeat(2,1fr)}
+    }
+  </style>
+</head>
+<body>
+  <div class="laptop" role="main">
+    <h1>Jodohkan Gambar dan Teks</h1>
+    <p class="lead">Seret kata yang benar dari kolom sebelah kanan dan jatuhkan ke kotak di bawah setiap gambar. Setelah kata dijatuhkan, kata tersebut akan hilang dari daftar.</p>
+
+    <div class="content">
+      <div>
+        <div id="gallery" class="gallery" aria-live="polite">
+          <!-- gambar akan diisi lewat JavaScript -->
+        </div>
+
+        <div class="controls">
+          <button id="checkBtn" class="btn btn-check">Hasil</button>
+          <button id="resetBtn" class="btn btn-reset">Reset</button>
+        </div>
+
+        <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+      </div>
+
+      <aside class="pool" aria-label="Kumpulan kata">
+        <h3>Kata-kata (seret dari sini)</h3>
+        <div id="words" class="words">
+          <!-- kata akan diisi -->
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    // sumber gambar (nomor sesuai permintaan)
+    const images = [
+      {id:1, src:'https://juna-arjuna.github.io/media-IPA/gambar1.jpg'},
+      {id:2, src:'https://juna-arjuna.github.io/media-IPA/gambar2.jpg'},
+      {id:3, src:'https://juna-arjuna.github.io/media-IPA/gambar3.jpg'},
+      {id:4, src:'https://juna-arjuna.github.io/media-IPA/gambar4.jpg'},
+      {id:5, src:'https://juna-arjuna.github.io/media-IPA/gambar5.jpg'},
+      {id:6, src:'https://juna-arjuna.github.io/media-IPA/gambar6.jpg'}
+    ];
+
+    // teks yang tersedia (kata-labels)
+    const textItems = [
+      {key:'mulut', label:'mulut'},
+      {key:'kerongkongan', label:'kerongkongan'},
+      {key:'lambung', label:'lambung'},
+      {key:'usus 12 jari', label:'usus 12 jari'},
+      {key:'usus halus', label:'usus halus'},
+      {key:'usus besar', label:'usus besar'}
+    ];
+
+    // expected mapping: gambarN -> expected word
+    const expected = {
+      1: 'mulut',
+      2: 'kerongkongan',
+      3: 'lambung',
+      4: 'usus 12 jari',
+      5: 'usus halus',
+      6: 'usus besar'
+    };
+
+    const gallery = document.getElementById('gallery');
+    const wordsEl = document.getElementById('words');
+    const checkBtn = document.getElementById('checkBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const feedback = document.getElementById('feedback');
+
+    // shuffle array (Fisher-Yates)
+    function shuffle(arr){
+      const a = arr.slice();
+      for(let i=a.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [a[i],a[j]] = [a[j],a[i]];
+      }
+      return a;
+    }
+
+    // render the pool of words (draggable)
+    function renderWords(currentWords){
+      wordsEl.innerHTML = '';
+      currentWords.forEach(w=>{
+        const div = document.createElement('div');
+        div.className = 'word';
+        div.textContent = w.label;
+        div.draggable = true;
+        div.dataset.key = w.key;
+        div.addEventListener('dragstart',(e)=>{
+          e.dataTransfer.setData('text/plain', w.key);
+          // for firefox
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        wordsEl.appendChild(div);
+      });
+    }
+
+    // render gallery with images in random order
+    let currentWords = textItems.slice();
+    let currentImageOrder = [];
+
+    function renderGallery(){
+      gallery.innerHTML = '';
+      currentImageOrder = shuffle(images);
+      currentImageOrder.forEach((imgObj, idx)=>{
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <img src="${imgObj.src}" alt="Gambar ${imgObj.id}" data-original-id="${imgObj.id}">
+          <div class="dropbox" data-original-id="${imgObj.id}" aria-label="Area jawaban untuk gambar ${imgObj.id}">
+            <textarea readonly placeholder="Letakkan kata di sini" aria-label="Kotak jawaban gambar ${imgObj.id}"></textarea>
+          </div>
+        `;
+
+        const dropbox = card.querySelector('.dropbox');
+        const textarea = dropbox.querySelector('textarea');
+
+        // dragover / drop handlers
+        dropbox.addEventListener('dragover', (e)=>{
+          e.preventDefault();
+          dropbox.classList.add('dragover');
+          e.dataTransfer.dropEffect = 'move';
+        });
+        dropbox.addEventListener('dragleave', ()=> dropbox.classList.remove('dragover'));
+
+        dropbox.addEventListener('drop', (e)=>{
+          e.preventDefault();
+          dropbox.classList.remove('dragover');
+          const key = e.dataTransfer.getData('text/plain');
+          if(!key) return;
+          // set text into textarea
+          textarea.value = key;
+          textarea.style.background = 'var(--white)';
+
+          // remove the word from the pool (hide)
+          const wordNodes = Array.from(wordsEl.querySelectorAll('.word'));
+          const match = wordNodes.find(n => n.dataset.key === key);
+          if(match) match.remove();
+        });
+
+        gallery.appendChild(card);
+      });
+    }
+
+    // check answers
+    checkBtn.addEventListener('click', ()=>{
+      const dropboxes = Array.from(gallery.querySelectorAll('.dropbox'));
+      // For each dropbox, read data-original-id to find expected
+      let allCorrect = true;
+      // If any box empty -> wrong
+      for(const db of dropboxes){
+        const id = Number(db.dataset.originalId);
+        const val = db.querySelector('textarea').value.trim().toLowerCase();
+        const exp = expected[id].toLowerCase();
+        if(val !== exp){ allCorrect = false; break; }
+      }
+      if(allCorrect){
+        feedback.textContent = 'Hebat. Jawaban anda benar';
+        feedback.classList.remove('wrong'); feedback.classList.add('ok');
+      } else {
+        feedback.textContent = 'Maaf. Jawaban anda salah. Ulangi lagi';
+        feedback.classList.remove('ok'); feedback.classList.add('wrong');
+      }
+    });
+
+    // reset
+    resetBtn.addEventListener('click', ()=>{
+      feedback.textContent = '';
+      currentWords = textItems.slice();
+      renderWords(currentWords);
+      renderGallery();
+    });
+
+    // initial render
+    renderWords(currentWords);
+    renderGallery();
+  </script>
+</body>
+</html>
